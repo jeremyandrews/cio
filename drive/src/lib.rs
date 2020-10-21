@@ -57,6 +57,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
+use log::{debug, info};
 use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use yup_oauth2::AccessToken;
@@ -182,12 +183,12 @@ impl GoogleDrive {
 
         // Build the request.
         let request = rb.build().unwrap();
-        println!("Reqwest request: {:#?}", request);
+        debug!("GoogleDrive request: {:#?}", request);
 
         request
     }
 
-    /// Download a file stored on Google Drive by it's ID.
+    /// Download a file stored on Google Drive by its ID.
     pub async fn download_file_by_id(
         &self,
         id: &str,
@@ -220,7 +221,7 @@ impl GoogleDrive {
         Ok(resp.bytes().await.unwrap())
     }
 
-    /// Get a file's contents by it's ID. Only works for Google Docs.
+    /// Get a file's contents by its ID. Only works for Google Docs.
     pub async fn get_file_contents_by_id(
         &self,
         id: &str,
@@ -251,7 +252,7 @@ impl GoogleDrive {
         Ok(resp.text().await.unwrap())
     }
 
-    /// Get a file by it's ID.
+    /// Get a file by its ID.
     pub async fn get_file_by_id(&self, id: &str) -> Result<File, APIError> {
         // Build the request.
         let request = self.request(
@@ -279,7 +280,7 @@ impl GoogleDrive {
         Ok(resp.json().await.unwrap())
     }
 
-    /// Get a file by it's name.
+    /// Get a file by its name.
     pub async fn get_file_by_name(
         &self,
         drive_id: &str,
@@ -319,6 +320,7 @@ impl GoogleDrive {
         Ok(files_response.files)
     }
 
+    // List files in specified directory, optionally filtering by name and whether is a folder.
     pub async fn list_directory(&self, parent: &str, name_filter: Option<&str>, include_folders: bool) -> Result<Vec<File>, APIError> {
         let mut q = format!("'{}' in parents", parent);
 
@@ -355,7 +357,7 @@ impl GoogleDrive {
             }
         };
 
-        // Try to deserialize the response.
+        // Deserialize the response.
         let files_response: FilesResponse = resp.json().await.expect("failed to deserialize response");
 
         Ok(files_response.files)
@@ -392,7 +394,7 @@ impl GoogleDrive {
         Ok(drives_response.drives)
     }
 
-    /// Get a drive by it's name.
+    /// Get a drive by its name.
     pub async fn get_drive_by_name(
         &self,
         name: String,

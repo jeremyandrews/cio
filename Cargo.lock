@@ -810,6 +810,7 @@ name = "google-drive"
 version = "0.1.9"
 dependencies = [
  "bytes",
+ "log",
  "reqwest",
  "serde",
  "yup-oauth2",
