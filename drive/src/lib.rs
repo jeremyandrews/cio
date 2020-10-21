@@ -116,7 +116,7 @@ impl GoogleDrive {
             Url::parse(&path).unwrap()
         };
 
-        // Check if the token is expired and panic.
+       // Check if the token is expired and panic.
         if self.token.is_expired() {
             panic!("token is expired");
         }
@@ -181,7 +181,10 @@ impl GoogleDrive {
         }
 
         // Build the request.
-        rb.build().unwrap()
+        let request = rb.build().unwrap();
+        println!("Reqwest request: {:#?}", request);
+
+        request
     }
 
     /// Download a file stored on Google Drive by it's ID.
@@ -316,6 +319,48 @@ impl GoogleDrive {
         Ok(files_response.files)
     }
 
+    pub async fn list_directory(&self, parent: &str, name_filter: Option<&str>, include_folders: bool) -> Result<Vec<File>, APIError> {
+        let mut q = format!("'{}' in parents", parent);
+
+        // Optionally filter by name.
+        match name_filter {
+            Some(n) => q = q + &format!(" and name contains {}", n),
+            None => {},
+        }
+
+        // Optionally filter out folders.
+        if !include_folders {
+            q = q + " and mimeType != 'application/vnd.google-apps.folder'";
+        }
+
+        // Build the request.
+        let request = self.request(
+            Method::GET,
+            "files".to_string(),
+            (),
+            Some(vec![("q", q.to_string())]),
+            0,
+            "".to_string(),
+            "",
+        );
+
+        let resp = self.client.execute(request).await.unwrap();
+        match resp.status() {
+            StatusCode::OK => (),
+            s => {
+                return Err(APIError {
+                    status_code: s,
+                    body: resp.text().await.unwrap(),
+                });
+            }
+        };
+
+        // Try to deserialize the response.
+        let files_response: FilesResponse = resp.json().await.expect("failed to deserialize response");
+
+        Ok(files_response.files)
+    }
+
     /// List drives.
     pub async fn list_drives(&self) -> Result<Vec<Drive>, APIError> {
         // Build the request.
@@ -324,6 +369,7 @@ impl GoogleDrive {
             "drives".to_string(),
             (),
             Some(vec![("useDomainAdminAccess", "true".to_string())]),
+            //None,
             0,
             "".to_string(),
             "",
