@@ -174,8 +174,8 @@ impl Sheets {
         Ok(resp.json().await.unwrap())
     }
 
-    /// Update values.
-    pub async fn update_values(
+    /// Update single value.
+    pub async fn update_value(
         &self,
         sheet_id: &str,
         range: &str,
@@ -202,6 +202,84 @@ impl Sheets {
                     "FORMATTED_STRING".to_string(),
                 ),
             ]),
+        );
+
+        let resp = self.client.execute(request).await.unwrap();
+        match resp.status() {
+            StatusCode::OK => (),
+            s => {
+                return Err(APIError {
+                    status_code: s,
+                    body: resp.text().await.unwrap(),
+                })
+            }
+        };
+
+        // Try to deserialize the response.
+        Ok(resp.json().await.unwrap())
+    }
+
+    /// Update multiple values.
+    pub async fn update_values(
+        &self,
+        sheet_id: &str,
+        range: &str,
+        values: Vec<Vec<String>>,
+    ) -> Result<UpdateValuesResponse, APIError> {
+        // Build the request.
+        let request = self.request(
+            Method::PUT,
+            format!(
+                "spreadsheets/{}/values/{}",
+                sheet_id.to_string(),
+                range.to_string()
+            ),
+            ValueRange {
+                range: Some(range.to_string()),
+                values: Some(values),
+                major_dimension: None,
+            },
+            Some(vec![
+                ("valueInputOption", "USER_ENTERED".to_string()),
+                ("responseValueRenderOption", "FORMATTED_VALUE".to_string()),
+                (
+                    "responseDateTimeRenderOption",
+                    "FORMATTED_STRING".to_string(),
+                ),
+            ]),
+        );
+
+        let resp = self.client.execute(request).await.unwrap();
+        match resp.status() {
+            StatusCode::OK => (),
+            s => {
+                return Err(APIError {
+                    status_code: s,
+                    body: resp.text().await.unwrap(),
+                })
+            }
+        };
+
+        // Try to deserialize the response.
+        Ok(resp.json().await.unwrap())
+    }
+
+    /// Clear sheet.
+    pub async fn clear(
+        &self,
+        sheet_id: &str,
+        range: &str,
+    ) -> Result<UpdateValuesResponse, APIError> {
+        // Build the request.
+        let request = self.request(
+            Method::POST,
+            format!(
+                "spreadsheets/{}/values/{}:clear",
+                sheet_id.to_string(),
+                range.to_string()
+            ),
+            Empty {},
+            None,
         );
 
         let resp = self.client.execute(request).await.unwrap();
@@ -255,6 +333,9 @@ impl error::Error for APIError {
         None
     }
 }
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct Empty {}
 
 /// A range of values.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
