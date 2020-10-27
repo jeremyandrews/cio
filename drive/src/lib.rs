@@ -57,7 +57,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
-use log::{debug, info};
+use log::{debug};
 use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use yup_oauth2::AccessToken;
