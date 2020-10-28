@@ -2169,6 +2169,7 @@ dependencies = [
 name = "sheets"
 version = "0.1.4"
 dependencies = [
+ "log",
  "reqwest",
  "serde",
  "yup-oauth2",

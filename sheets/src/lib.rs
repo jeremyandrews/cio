@@ -63,6 +63,7 @@ use std::sync::Arc;
 use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use yup_oauth2::AccessToken;
+use log::debug;
 
 /// Endpoint for the Google Sheets API.
 const ENDPOINT: &str = "https://sheets.googleapis.com/v4/";
@@ -106,6 +107,8 @@ impl Sheets {
     {
         let base = Url::parse(ENDPOINT).unwrap();
         let url = base.join(&path).unwrap();
+
+        debug!("requesting url: {}", url);
 
         // Check if the token is expired and panic.
         if self.token.is_expired() {
@@ -296,6 +299,57 @@ impl Sheets {
         // Try to deserialize the response.
         Ok(resp.json().await.unwrap())
     }
+
+    /// Create a sheet in an existing spreadsheet.
+    pub async fn create_sheet(
+        &self,
+        spreadsheet_id: &str,
+        title: &str,
+    ) -> Result<UpdateValuesResponse, APIError> {
+        let grid_properties = GridProperties {
+            rowCount: 20,
+            columnCount: 6,
+        };
+        let properties = Properties {
+            title: title.to_string(),
+            index: 0,
+            gridProperties: grid_properties,
+        };
+        let add_sheet_properties = AddSheetProperties {
+            properties,
+        };
+        let add_sheet = AddSheet {
+            addSheet: add_sheet_properties,
+        };
+        let request = AddSheetRequest {
+            requests: vec![add_sheet],
+        };
+
+        // Build the request.
+        let request = self.request(
+            Method::POST,
+            format!(
+                "spreadsheets/{}:batchUpdate",
+                spreadsheet_id,
+            ),
+            request,
+            None,
+        );
+
+        let resp = self.client.execute(request).await.unwrap();
+        match resp.status() {
+            StatusCode::OK => (),
+            s => {
+                return Err(APIError {
+                    status_code: s,
+                    body: resp.text().await.unwrap(),
+                })
+            }
+        };
+
+        // Try to deserialize the response.
+        Ok(resp.json().await.unwrap())
+    }
 }
 
 /// Error type returned by our library.
@@ -336,6 +390,34 @@ impl error::Error for APIError {
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct Empty {}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct AddSheetRequest {
+    requests: Vec<AddSheet>,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct AddSheet {
+    addSheet: AddSheetProperties,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct AddSheetProperties {
+    properties: Properties,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct Properties {
+    title: String,
+    index: usize,
+    gridProperties: GridProperties,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct GridProperties {
+    rowCount: usize,
+    columnCount: usize,
+}
 
 /// A range of values.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]

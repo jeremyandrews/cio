@@ -57,7 +57,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
-use log::{debug};
+use log::{debug, info};
 use reqwest::{header, Client, Method, Request, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use yup_oauth2::AccessToken;
@@ -326,7 +326,7 @@ impl GoogleDrive {
 
         // Optionally filter by name.
         match name_filter {
-            Some(n) => q = q + &format!(" and name contains {}", n),
+            Some(n) => q = q + &format!(" and name contains '{}'", n),
             None => {},
         }
 
@@ -334,6 +334,7 @@ impl GoogleDrive {
         if !include_folders {
             q = q + " and mimeType != 'application/vnd.google-apps.folder'";
         }
+        debug!("list_directory q = {}", q);
 
         // Build the request.
         let request = self.request(
@@ -462,6 +463,52 @@ impl GoogleDrive {
 
         Ok(response.id.unwrap())
     }
+
+    /// Create a new spreadsheet.
+    pub async fn create_spreadsheet(
+        &self,
+        parent_id: &str,
+        name: &str,
+    ) -> Result<String, APIError> {
+        let mime_type = "application/vnd.google-apps.spreadsheet";
+        let mut file: File = Default::default();
+        // Set the name,
+        file.name = Some(name.to_string());
+        file.mime_type = Some(mime_type.to_string());
+        file.parents = Some(vec![parent_id.to_string()]);
+
+        // Make the request and return the ID.
+        let request = self.request(
+            Method::POST,
+            "files".to_string(),
+            file,
+            Some(vec![
+                ("supportsAllDrives", "true".to_string()),
+                ("includeItemsFromAllDrives", "true".to_string()),
+            ]),
+            0,
+            "".to_string(),
+            mime_type,
+        );
+
+        let resp = self.client.execute(request).await.unwrap();
+        match resp.status() {
+            StatusCode::OK => (),
+            StatusCode::CREATED => (),
+            s => {
+                return Err(APIError {
+                    status_code: s,
+                    body: resp.text().await.unwrap(),
+                });
+            }
+        };
+
+        // Try to deserialize the response.
+        let response: File = resp.json().await.unwrap();
+
+        Ok(response.id.unwrap())
+    }
+
 
     /// Upload a file.
     pub async fn upload_file(
