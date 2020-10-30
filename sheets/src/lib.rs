@@ -397,6 +397,7 @@ pub struct AddSheetRequest {
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct AddSheet {
     addSheet: AddSheetProperties,
 }
@@ -407,6 +408,7 @@ pub struct AddSheetProperties {
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct Properties {
     title: String,
     index: usize,
@@ -414,6 +416,7 @@ pub struct Properties {
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[allow(non_snake_case)]
 pub struct GridProperties {
     rowCount: usize,
     columnCount: usize,
